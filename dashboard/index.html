@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connected - Dashboard Moderatori</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="login-page" class="page">
+        <div class="login-container">
+            <h1>Connected</h1>
+            <h2>Dashboard Moderatori</h2>
+            <form id="login-form">
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit">Accedi</button>
+                <p id="login-error" class="error"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard-page" class="page hidden">
+        <nav class="sidebar">
+            <div class="logo">
+                <h2>Connected</h2>
+                <p>Dashboard</p>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#" data-section="cities" class="active">Città</a></li>
+                <li><a href="#" data-section="schools">Scuole</a></li>
+                <li><a href="#" data-section="posts">Post</a></li>
+                <li><a href="#" data-section="spotted">Spotted</a></li>
+            </ul>
+            <button id="logout-btn" class="logout-btn">Logout</button>
+        </nav>
+
+        <main class="content">
+            <!-- Cities Section -->
+            <section id="cities-section" class="section">
+                <div class="section-header">
+                    <h2>Gestione Città</h2>
+                    <button class="btn btn-primary" onclick="showAddCityModal()">+ Aggiungi Città</button>
+                </div>
+                <table id="cities-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Regione</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </section>
+
+            <!-- Schools Section -->
+            <section id="schools-section" class="section hidden">
+                <div class="section-header">
+                    <h2>Gestione Scuole</h2>
+                    <div class="header-actions">
+                        <select id="school-city-filter" onchange="loadSchools()">
+                            <option value="">Tutte le città</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="showAddSchoolModal()">+ Aggiungi Scuola</button>
+                    </div>
+                </div>
+                <table id="schools-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Città</th>
+                            <th>Dominio Email</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </section>
+
+            <!-- Posts Section -->
+            <section id="posts-section" class="section hidden">
+                <div class="section-header">
+                    <h2>Moderazione Post</h2>
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="pending-posts">In Attesa</button>
+                        <button class="tab-btn" data-tab="reported-posts">Segnalati</button>
+                    </div>
+                </div>
+                <div id="pending-posts" class="tab-content">
+                    <div id="pending-posts-list" class="cards-list"></div>
+                </div>
+                <div id="reported-posts" class="tab-content hidden">
+                    <div id="reported-posts-list" class="cards-list"></div>
+                </div>
+            </section>
+
+            <!-- Spotted Section -->
+            <section id="spotted-section" class="section hidden">
+                <div class="section-header">
+                    <h2>Moderazione Spotted</h2>
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="pending-spotted">In Attesa</button>
+                        <button class="tab-btn" data-tab="reported-spotted">Segnalati</button>
+                    </div>
+                </div>
+                <div id="pending-spotted" class="tab-content">
+                    <div id="pending-spotted-list" class="cards-list"></div>
+                </div>
+                <div id="reported-spotted" class="tab-content hidden">
+                    <div id="reported-spotted-list" class="cards-list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for Add/Edit City -->
+    <div id="city-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="city-modal-title">Aggiungi Città</h3>
+            <form id="city-form">
+                <input type="hidden" id="city-id">
+                <input type="text" id="city-name" placeholder="Nome città" required>
+                <input type="text" id="city-region" placeholder="Regione">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeCityModal()">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Add/Edit School -->
+    <div id="school-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="school-modal-title">Aggiungi Scuola</h3>
+            <form id="school-form">
+                <input type="hidden" id="school-id">
+                <input type="text" id="school-name" placeholder="Nome scuola" required>
+                <select id="school-city" required>
+                    <option value="">Seleziona città</option>
+                </select>
+                <input type="text" id="school-domain" placeholder="Dominio email (es. @scuola.edu.it)">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeSchoolModal()">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Conferma eliminazione</h3>
+            <p id="confirm-message">Sei sicuro di voler eliminare questo elemento?</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">Annulla</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-btn">Elimina</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

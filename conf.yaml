@@ -1,0 +1,11 @@
+host: "127.0.0.1"
+port: 8080
+
+dbase_host: "127.0.0.1"
+dbase_port: 5432
+dbase_name: "connected_dbase"
+dbase_user: "root"
+dbase_passwd: "connected_pgdbase"
+
+
+jwt_secret: "b3b342479799bcf2ca899182da554c5af819e7813605f2d976ee68cc131f63672cf0052a26f489d289f14703237d4c7c1ab68e93d2d1a9319ca709a2b9c1c20b"

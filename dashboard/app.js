@@ -1,0 +1,540 @@
+const API_BASE = '/api';
+let token = localStorage.getItem('moderator_token');
+
+// Helper functions
+async function apiCall(endpoint, method = 'GET', body = null) {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const options = { method, headers };
+    if (body) {
+        options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(`${API_BASE}${endpoint}`, options);
+    const data = await response.json();
+
+    if (response.status === 401) {
+        logout();
+        throw new Error('Session expired');
+    }
+
+    return data;
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('it-IT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Auth functions
+async function login(e) {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorEl = document.getElementById('login-error');
+
+    try {
+        const data = await apiCall('/login', 'POST', { username, password });
+
+        if (data.status === 'ok') {
+            token = data.token;
+            localStorage.setItem('moderator_token', token);
+            showDashboard();
+        } else {
+            errorEl.textContent = data.msg || 'Credenziali non valide';
+        }
+    } catch (err) {
+        errorEl.textContent = 'Errore di connessione';
+    }
+}
+
+function logout() {
+    token = null;
+    localStorage.removeItem('moderator_token');
+    document.getElementById('login-page').classList.remove('hidden');
+    document.getElementById('dashboard-page').classList.add('hidden');
+}
+
+async function checkAuth() {
+    if (!token) return false;
+    try {
+        const data = await apiCall('/verify');
+        return data.status === 'ok';
+    } catch {
+        return false;
+    }
+}
+
+async function showDashboard() {
+    document.getElementById('login-page').classList.add('hidden');
+    document.getElementById('dashboard-page').classList.remove('hidden');
+    await loadCities();
+}
+
+// Navigation
+function setupNavigation() {
+    document.querySelectorAll('.nav-links a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = e.target.dataset.section;
+
+            // Update active link
+            document.querySelectorAll('.nav-links a').forEach(l => l.classList.remove('active'));
+            e.target.classList.add('active');
+
+            // Show section
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`${section}-section`).classList.remove('hidden');
+
+            // Load data
+            switch(section) {
+                case 'cities': loadCities(); break;
+                case 'schools': loadSchools(); break;
+                case 'posts': loadPendingPosts(); loadReportedPosts(); break;
+                case 'spotted': loadPendingSpotted(); loadReportedSpotted(); break;
+            }
+        });
+    });
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tab = e.target.dataset.tab;
+            const parent = e.target.closest('.section');
+
+            parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+
+            parent.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            parent.querySelector(`#${tab}`).classList.remove('hidden');
+        });
+    });
+}
+
+// Cities
+async function loadCities() {
+    try {
+        const data = await apiCall('/cities');
+        const tbody = document.querySelector('#cities-table tbody');
+        tbody.innerHTML = '';
+
+        if (!data.data || data.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nessuna città trovata</td></tr>';
+            return;
+        }
+
+        data.data.forEach(city => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${city.id}</td>
+                    <td>${city.name}</td>
+                    <td>${city.region || '-'}</td>
+                    <td class="actions">
+                        <button class="btn btn-secondary btn-small" onclick="editCity(${city.id}, '${city.name}', '${city.region || ''}')">Modifica</button>
+                        <button class="btn btn-danger btn-small" onclick="confirmDeleteCity(${city.id})">Elimina</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        // Update city selects
+        updateCitySelects(data.data);
+    } catch (err) {
+        console.error('Error loading cities:', err);
+    }
+}
+
+function updateCitySelects(cities) {
+    const schoolCityFilter = document.getElementById('school-city-filter');
+    const schoolCity = document.getElementById('school-city');
+
+    const optionsHtml = cities.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+    schoolCityFilter.innerHTML = '<option value="">Tutte le città</option>' + optionsHtml;
+    schoolCity.innerHTML = '<option value="">Seleziona città</option>' + optionsHtml;
+}
+
+function showAddCityModal() {
+    document.getElementById('city-modal-title').textContent = 'Aggiungi Città';
+    document.getElementById('city-id').value = '';
+    document.getElementById('city-name').value = '';
+    document.getElementById('city-region').value = '';
+    document.getElementById('city-modal').classList.remove('hidden');
+}
+
+function editCity(id, name, region) {
+    document.getElementById('city-modal-title').textContent = 'Modifica Città';
+    document.getElementById('city-id').value = id;
+    document.getElementById('city-name').value = name;
+    document.getElementById('city-region').value = region;
+    document.getElementById('city-modal').classList.remove('hidden');
+}
+
+function closeCityModal() {
+    document.getElementById('city-modal').classList.add('hidden');
+}
+
+async function saveCity(e) {
+    e.preventDefault();
+    const id = document.getElementById('city-id').value;
+    const name = document.getElementById('city-name').value;
+    const region = document.getElementById('city-region').value;
+
+    try {
+        if (id) {
+            await apiCall(`/cities/${id}`, 'PUT', { name, region });
+        } else {
+            await apiCall('/cities', 'POST', { name, region });
+        }
+        closeCityModal();
+        await loadCities();
+    } catch (err) {
+        alert('Errore nel salvataggio');
+    }
+}
+
+function confirmDeleteCity(id) {
+    document.getElementById('confirm-message').textContent = 'Sei sicuro di voler eliminare questa città? Tutte le scuole associate verranno rimosse.';
+    document.getElementById('confirm-delete-btn').onclick = () => deleteCity(id);
+    document.getElementById('confirm-modal').classList.remove('hidden');
+}
+
+async function deleteCity(id) {
+    try {
+        await apiCall(`/cities/${id}`, 'DELETE');
+        closeConfirmModal();
+        await loadCities();
+    } catch (err) {
+        alert('Errore nell\'eliminazione. Assicurati che non ci siano scuole associate.');
+    }
+}
+
+// Schools
+async function loadSchools() {
+    try {
+        const cityId = document.getElementById('school-city-filter').value;
+        const endpoint = cityId ? `/schools?city_id=${cityId}` : '/schools';
+        const data = await apiCall(endpoint);
+        const tbody = document.querySelector('#schools-table tbody');
+        tbody.innerHTML = '';
+
+        if (!data.data || data.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nessuna scuola trovata</td></tr>';
+            return;
+        }
+
+        data.data.forEach(school => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${school.id}</td>
+                    <td>${school.name}</td>
+                    <td>${school.city_name}</td>
+                    <td>${school.email_domain || '-'}</td>
+                    <td class="actions">
+                        <button class="btn btn-secondary btn-small" onclick="editSchool(${school.id}, '${school.name}', '${school.email_domain || ''}')">Modifica</button>
+                        <button class="btn btn-danger btn-small" onclick="confirmDeleteSchool(${school.id})">Elimina</button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (err) {
+        console.error('Error loading schools:', err);
+    }
+}
+
+function showAddSchoolModal() {
+    document.getElementById('school-modal-title').textContent = 'Aggiungi Scuola';
+    document.getElementById('school-id').value = '';
+    document.getElementById('school-name').value = '';
+    document.getElementById('school-city').value = '';
+    document.getElementById('school-city').disabled = false;
+    document.getElementById('school-domain').value = '';
+    document.getElementById('school-modal').classList.remove('hidden');
+}
+
+function editSchool(id, name, domain) {
+    document.getElementById('school-modal-title').textContent = 'Modifica Scuola';
+    document.getElementById('school-id').value = id;
+    document.getElementById('school-name').value = name;
+    document.getElementById('school-city').disabled = true;
+    document.getElementById('school-domain').value = domain;
+    document.getElementById('school-modal').classList.remove('hidden');
+}
+
+function closeSchoolModal() {
+    document.getElementById('school-modal').classList.add('hidden');
+}
+
+async function saveSchool(e) {
+    e.preventDefault();
+    const id = document.getElementById('school-id').value;
+    const name = document.getElementById('school-name').value;
+    const cityId = parseInt(document.getElementById('school-city').value);
+    const emailDomain = document.getElementById('school-domain').value;
+
+    try {
+        if (id) {
+            await apiCall(`/schools/${id}`, 'PUT', { name, email_domain: emailDomain });
+        } else {
+            await apiCall('/schools', 'POST', { name, city_id: cityId, email_domain: emailDomain });
+        }
+        closeSchoolModal();
+        await loadSchools();
+    } catch (err) {
+        alert('Errore nel salvataggio');
+    }
+}
+
+function confirmDeleteSchool(id) {
+    document.getElementById('confirm-message').textContent = 'Sei sicuro di voler eliminare questa scuola?';
+    document.getElementById('confirm-delete-btn').onclick = () => deleteSchool(id);
+    document.getElementById('confirm-modal').classList.remove('hidden');
+}
+
+async function deleteSchool(id) {
+    try {
+        await apiCall(`/schools/${id}`, 'DELETE');
+        closeConfirmModal();
+        await loadSchools();
+    } catch (err) {
+        alert('Errore nell\'eliminazione. Assicurati che non ci siano utenti associati.');
+    }
+}
+
+// Posts
+async function loadPendingPosts() {
+    try {
+        const data = await apiCall('/posts/pending');
+        const container = document.getElementById('pending-posts-list');
+
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Nessun post in attesa di approvazione</p></div>';
+            return;
+        }
+
+        container.innerHTML = data.data.map(post => `
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <strong>${post.creator_first_name} ${post.creator_last_name}</strong>
+                        <span class="badge badge-warning">In attesa</span>
+                    </div>
+                </div>
+                <div class="card-meta">
+                    <span>${post.school_name || 'N/A'} - ${post.city_name || 'N/A'}</span>
+                    <span>${formatDate(post.creation_timestamp)}</span>
+                </div>
+                <div class="card-content">${post.content}</div>
+                <div class="card-actions">
+                    <button class="btn btn-success btn-small" onclick="approvePost(${post.id})">Approva</button>
+                    <button class="btn btn-danger btn-small" onclick="rejectPost(${post.id})">Rifiuta</button>
+                    <button class="btn btn-secondary btn-small" onclick="confirmDeletePost(${post.id})">Elimina</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading pending posts:', err);
+    }
+}
+
+async function loadReportedPosts() {
+    try {
+        const data = await apiCall('/posts/reported');
+        const container = document.getElementById('reported-posts-list');
+
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Nessun post segnalato</p></div>';
+            return;
+        }
+
+        container.innerHTML = data.data.map(post => `
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <strong>${post.creator_first_name} ${post.creator_last_name}</strong>
+                        <span class="badge badge-danger">${post.report_count} segnalazioni</span>
+                    </div>
+                </div>
+                <div class="card-meta">
+                    <span>${post.school_name || 'N/A'} - ${post.city_name || 'N/A'}</span>
+                    <span>${formatDate(post.creation_timestamp)}</span>
+                </div>
+                <div class="card-content">${post.content}</div>
+                <div class="card-actions">
+                    <button class="btn btn-danger btn-small" onclick="confirmDeletePost(${post.id})">Elimina</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading reported posts:', err);
+    }
+}
+
+async function approvePost(id) {
+    try {
+        await apiCall(`/posts/${id}/approve`, 'PUT');
+        await loadPendingPosts();
+    } catch (err) {
+        alert('Errore nell\'approvazione');
+    }
+}
+
+async function rejectPost(id) {
+    try {
+        await apiCall(`/posts/${id}/reject`, 'PUT');
+        await loadPendingPosts();
+    } catch (err) {
+        alert('Errore nel rifiuto');
+    }
+}
+
+function confirmDeletePost(id) {
+    document.getElementById('confirm-message').textContent = 'Sei sicuro di voler eliminare questo post?';
+    document.getElementById('confirm-delete-btn').onclick = () => deletePost(id);
+    document.getElementById('confirm-modal').classList.remove('hidden');
+}
+
+async function deletePost(id) {
+    try {
+        await apiCall(`/posts/${id}`, 'DELETE');
+        closeConfirmModal();
+        await loadPendingPosts();
+        await loadReportedPosts();
+    } catch (err) {
+        alert('Errore nell\'eliminazione');
+    }
+}
+
+// Spotted
+async function loadPendingSpotted() {
+    try {
+        const data = await apiCall('/spotted/pending');
+        const container = document.getElementById('pending-spotted-list');
+
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Nessuno spotted in attesa di approvazione</p></div>';
+            return;
+        }
+
+        container.innerHTML = data.data.map(s => `
+            <div class="card" style="border-left: 4px solid ${s.color || '#6366f1'}">
+                <div class="card-header">
+                    <div>
+                        <strong>Spotted Anonimo</strong>
+                        <span class="badge badge-warning">${s.visibility_desc}</span>
+                    </div>
+                </div>
+                <div class="card-meta">
+                    <span>${s.school_name || 'N/A'} - ${s.city_name || 'N/A'}</span>
+                    <span>${formatDate(s.creation_timestamp)}</span>
+                </div>
+                <div class="card-content">${s.content}</div>
+                <div class="card-actions">
+                    <button class="btn btn-success btn-small" onclick="approveSpotted(${s.id})">Approva</button>
+                    <button class="btn btn-danger btn-small" onclick="rejectSpotted(${s.id})">Rifiuta</button>
+                    <button class="btn btn-secondary btn-small" onclick="confirmDeleteSpotted(${s.id})">Elimina</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading pending spotted:', err);
+    }
+}
+
+async function loadReportedSpotted() {
+    try {
+        const data = await apiCall('/spotted/reported');
+        const container = document.getElementById('reported-spotted-list');
+
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Nessuno spotted segnalato</p></div>';
+            return;
+        }
+
+        container.innerHTML = data.data.map(s => `
+            <div class="card" style="border-left: 4px solid ${s.color || '#6366f1'}">
+                <div class="card-header">
+                    <div>
+                        <strong>Spotted Anonimo</strong>
+                        <span class="badge badge-danger">${s.report_count} segnalazioni</span>
+                    </div>
+                </div>
+                <div class="card-meta">
+                    <span>${s.school_name || 'N/A'} - ${s.city_name || 'N/A'}</span>
+                    <span>${formatDate(s.creation_timestamp)}</span>
+                </div>
+                <div class="card-content">${s.content}</div>
+                <div class="card-actions">
+                    <button class="btn btn-danger btn-small" onclick="confirmDeleteSpotted(${s.id})">Elimina</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading reported spotted:', err);
+    }
+}
+
+async function approveSpotted(id) {
+    try {
+        await apiCall(`/spotted/${id}/approve`, 'PUT');
+        await loadPendingSpotted();
+    } catch (err) {
+        alert('Errore nell\'approvazione');
+    }
+}
+
+async function rejectSpotted(id) {
+    try {
+        await apiCall(`/spotted/${id}/reject`, 'PUT');
+        await loadPendingSpotted();
+    } catch (err) {
+        alert('Errore nel rifiuto');
+    }
+}
+
+function confirmDeleteSpotted(id) {
+    document.getElementById('confirm-message').textContent = 'Sei sicuro di voler eliminare questo spotted?';
+    document.getElementById('confirm-delete-btn').onclick = () => deleteSpotted(id);
+    document.getElementById('confirm-modal').classList.remove('hidden');
+}
+
+async function deleteSpotted(id) {
+    try {
+        await apiCall(`/spotted/${id}`, 'DELETE');
+        closeConfirmModal();
+        await loadPendingSpotted();
+        await loadReportedSpotted();
+    } catch (err) {
+        alert('Errore nell\'eliminazione');
+    }
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').classList.add('hidden');
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('login-form').addEventListener('submit', login);
+    document.getElementById('logout-btn').addEventListener('click', logout);
+    document.getElementById('city-form').addEventListener('submit', saveCity);
+    document.getElementById('school-form').addEventListener('submit', saveSchool);
+
+    setupNavigation();
+
+    if (await checkAuth()) {
+        showDashboard();
+    }
+});
