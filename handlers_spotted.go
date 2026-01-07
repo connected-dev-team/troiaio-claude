@@ -39,9 +39,14 @@ func handleGetPendingSpotted(ctx *gin.Context) {
 			&s.CreatorFirstName, &s.CreatorLastName, &s.CreatorEmail,
 			&s.SchoolName, &s.CityName, &s.VisibilityDesc,
 		); err != nil {
+			println("Scan error (pending spotted):", err.Error())
 			continue
 		}
 		spotted = append(spotted, s)
+	}
+
+	if spotted == nil {
+		spotted = []PendingSpotted{}
 	}
 
 	ctx.JSON(http.StatusOK, DataResponse{
@@ -82,9 +87,14 @@ func handleGetReportedSpotted(ctx *gin.Context) {
 			&s.CreatorFirstName, &s.CreatorLastName, &s.CreatorEmail,
 			&s.SchoolName, &s.CityName, &s.VisibilityDesc, &s.ReportCount,
 		); err != nil {
+			println("Scan error (reported spotted):", err.Error())
 			continue
 		}
 		spotted = append(spotted, s)
+	}
+
+	if spotted == nil {
+		spotted = []ReportedSpotted{}
 	}
 
 	ctx.JSON(http.StatusOK, DataResponse{
@@ -239,9 +249,14 @@ func handleGetAllSpotted(ctx *gin.Context) {
 			&s.CreatorFirstName, &s.CreatorLastName, &s.CreatorEmail,
 			&s.SchoolName, &s.CityName, &s.VisibilityDesc, &s.Status,
 		); err != nil {
+			println("Scan error (all spotted):", err.Error())
 			continue
 		}
 		spotted = append(spotted, s)
+	}
+
+	if spotted == nil {
+		spotted = []AllSpotted{}
 	}
 
 	ctx.JSON(http.StatusOK, DataResponse{

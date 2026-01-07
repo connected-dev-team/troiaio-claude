@@ -109,7 +109,7 @@ func QueryPendingPosts(db *pgx.Conn) (pgx.Rows, error) {
 	return db.Query(
 		context.Background(),
 		`SELECT p.id, p.content, p.creator, p.creation_timestamp, p.likes_count,
-		        u.first_name, u.last_name, u.email,
+		        COALESCE(u.first_name, 'N/A'), COALESCE(u.last_name, ''), COALESCE(u.email, 'N/A'),
 		        s.name as school_name, c.name as city_name
 		 FROM post p
 		 JOIN users u ON p.creator = u.id
@@ -124,7 +124,7 @@ func QueryReportedPosts(db *pgx.Conn) (pgx.Rows, error) {
 	return db.Query(
 		context.Background(),
 		`SELECT p.id, p.content, p.creator, p.creation_timestamp, p.likes_count,
-		        u.first_name, u.last_name, u.email,
+		        COALESCE(u.first_name, 'N/A'), COALESCE(u.last_name, ''), COALESCE(u.email, 'N/A'),
 		        s.name as school_name, c.name as city_name,
 		        COUNT(rp.id) as report_count
 		 FROM post p
@@ -173,7 +173,7 @@ func QueryAllPosts(db *pgx.Conn) (pgx.Rows, error) {
 	return db.Query(
 		context.Background(),
 		`SELECT p.id, p.content, p.creator, p.creation_timestamp, p.likes_count,
-		        u.first_name, u.last_name, u.email,
+		        COALESCE(u.first_name, 'N/A'), COALESCE(u.last_name, ''), COALESCE(u.email, 'N/A'),
 		        s.name as school_name, c.name as city_name,
 		        ss.description as status
 		 FROM post p
@@ -201,8 +201,8 @@ func QueryPendingSpotted(db *pgx.Conn) (pgx.Rows, error) {
 	return db.Query(
 		context.Background(),
 		`SELECT sp.id, sp.content, sp.creator, sp.creation_timestamp, sp.likes_count,
-		        sp.visibility, sp.color,
-		        u.first_name, u.last_name, u.email,
+		        sp.visibility, COALESCE(sp.color, '#6366f1'),
+		        COALESCE(u.first_name, 'N/A'), COALESCE(u.last_name, ''), COALESCE(u.email, 'N/A'),
 		        s.name as school_name, c.name as city_name,
 		        sv.description as visibility_desc
 		 FROM spotted sp
@@ -219,8 +219,8 @@ func QueryReportedSpotted(db *pgx.Conn) (pgx.Rows, error) {
 	return db.Query(
 		context.Background(),
 		`SELECT sp.id, sp.content, sp.creator, sp.creation_timestamp, sp.likes_count,
-		        sp.visibility, sp.color,
-		        u.first_name, u.last_name, u.email,
+		        sp.visibility, COALESCE(sp.color, '#6366f1'),
+		        COALESCE(u.first_name, 'N/A'), COALESCE(u.last_name, ''), COALESCE(u.email, 'N/A'),
 		        s.name as school_name, c.name as city_name,
 		        sv.description as visibility_desc,
 		        COUNT(rs.id) as report_count
@@ -272,8 +272,8 @@ func QueryAllSpotted(db *pgx.Conn) (pgx.Rows, error) {
 	return db.Query(
 		context.Background(),
 		`SELECT sp.id, sp.content, sp.creator, sp.creation_timestamp, sp.likes_count,
-		        sp.visibility, sp.color,
-		        u.first_name, u.last_name, u.email,
+		        sp.visibility, COALESCE(sp.color, '#6366f1'),
+		        COALESCE(u.first_name, 'N/A'), COALESCE(u.last_name, ''), COALESCE(u.email, 'N/A'),
 		        s.name as school_name, c.name as city_name,
 		        sv.description as visibility_desc,
 		        ss.description as status
@@ -303,17 +303,18 @@ func SearchUsers(db *pgx.Conn, searchTerm string) (pgx.Rows, error) {
 	searchPattern := "%" + searchTerm + "%"
 	return db.Query(
 		context.Background(),
-		`SELECT u.id, u.email, u.personal_email, u.first_name, u.last_name,
-		        ur.description as role,
+		`SELECT u.id, COALESCE(u.email, ''), u.personal_email,
+		        COALESCE(u.first_name, ''), COALESCE(u.last_name, ''),
+		        COALESCE(ur.description, 'user') as role,
 		        s.name as school_name, c.name as city_name
 		 FROM users u
-		 JOIN user_role ur ON u.user_role = ur.id
+		 LEFT JOIN user_role ur ON u.user_role = ur.id
 		 LEFT JOIN schools s ON u.school = s.id
 		 LEFT JOIN cities c ON s.city = c.id
-		 WHERE LOWER(u.first_name) LIKE LOWER($1)
-		    OR LOWER(u.last_name) LIKE LOWER($1)
-		    OR LOWER(u.email) LIKE LOWER($1)
-		    OR LOWER(u.personal_email) LIKE LOWER($1)
+		 WHERE LOWER(COALESCE(u.first_name, '')) LIKE LOWER($1)
+		    OR LOWER(COALESCE(u.last_name, '')) LIKE LOWER($1)
+		    OR LOWER(COALESCE(u.email, '')) LIKE LOWER($1)
+		    OR LOWER(COALESCE(u.personal_email, '')) LIKE LOWER($1)
 		 ORDER BY u.last_name, u.first_name
 		 LIMIT 50`,
 		searchPattern,
@@ -333,11 +334,12 @@ func SetUserRole(db *pgx.Conn, userId int, role string) error {
 func GetUserById(db *pgx.Conn, userId int) (pgx.Rows, error) {
 	return db.Query(
 		context.Background(),
-		`SELECT u.id, u.email, u.personal_email, u.first_name, u.last_name,
-		        ur.description as role,
+		`SELECT u.id, COALESCE(u.email, ''), u.personal_email,
+		        COALESCE(u.first_name, ''), COALESCE(u.last_name, ''),
+		        COALESCE(ur.description, 'user') as role,
 		        s.name as school_name, c.name as city_name
 		 FROM users u
-		 JOIN user_role ur ON u.user_role = ur.id
+		 LEFT JOIN user_role ur ON u.user_role = ur.id
 		 LEFT JOIN schools s ON u.school = s.id
 		 LEFT JOIN cities c ON s.city = c.id
 		 WHERE u.id = $1`,

@@ -57,9 +57,15 @@ func handleSearchUsers(ctx *gin.Context) {
 			&user.FirstName, &user.LastName, &user.Role,
 			&user.SchoolName, &user.CityName,
 		); err != nil {
+			// Log scan error for debugging
+			println("Scan error:", err.Error())
 			continue
 		}
 		users = append(users, user)
+	}
+
+	if users == nil {
+		users = []User{}
 	}
 
 	ctx.JSON(http.StatusOK, DataResponse{
