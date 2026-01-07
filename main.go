@@ -88,6 +88,11 @@ func main() {
 			protected.PUT("/spotted/:id/reject", handleRejectSpotted)
 			protected.PUT("/spotted/:id/status", handleSetSpottedStatus)
 			protected.DELETE("/spotted/:id", handleDeleteSpotted)
+
+			// Users management
+			protected.GET("/users/search", handleSearchUsers)
+			protected.GET("/users/:id", handleGetUser)
+			protected.PUT("/users/:id/role", handleSetUserRole)
 		}
 	}
 

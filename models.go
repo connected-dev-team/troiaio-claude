@@ -135,6 +135,23 @@ type AllSpotted struct {
 	Status            string    `json:"status"`
 }
 
+// ==================== USERS ====================
+
+type User struct {
+	ID            int     `json:"id"`
+	Email         string  `json:"email"`
+	PersonalEmail *string `json:"personal_email"`
+	FirstName     string  `json:"first_name"`
+	LastName      string  `json:"last_name"`
+	Role          string  `json:"role"`
+	SchoolName    *string `json:"school_name"`
+	CityName      *string `json:"city_name"`
+}
+
+type SetRoleRequest struct {
+	Role string `json:"role"`
+}
+
 // ==================== GENERIC RESPONSES ====================
 
 type SuccessResponse struct {

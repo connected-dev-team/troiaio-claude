@@ -413,6 +413,37 @@ select {
     font-size: 1.1rem;
 }
 
+/* Search box */
+.search-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.search-box input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: #6366f1;
+}
+
+/* Role badge */
+.badge-role-user {
+    background: #e5e5e5;
+    color: #666;
+}
+
+.badge-role-representative {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     #dashboard-page {

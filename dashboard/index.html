@@ -33,6 +33,7 @@
                 <li><a href="#" data-section="schools">Scuole</a></li>
                 <li><a href="#" data-section="posts">Post</a></li>
                 <li><a href="#" data-section="spotted">Spotted</a></li>
+                <li><a href="#" data-section="users">Utenti</a></li>
             </ul>
             <button id="logout-btn" class="logout-btn">Logout</button>
         </nav>
@@ -122,6 +123,35 @@
                 <div id="all-spotted" class="tab-content hidden">
                     <div id="all-spotted-list" class="cards-list"></div>
                 </div>
+            </section>
+
+            <!-- Users Section -->
+            <section id="users-section" class="section hidden">
+                <div class="section-header">
+                    <h2>Gestione Utenti</h2>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="user-search-input" placeholder="Cerca per nome, cognome o email..." onkeyup="handleUserSearchKeyup(event)">
+                    <button class="btn btn-primary" onclick="searchUsers()">Cerca</button>
+                </div>
+                <div id="users-results">
+                    <div class="empty-state">
+                        <p>Cerca un utente per nome, cognome o email</p>
+                    </div>
+                </div>
+                <table id="users-table" class="hidden">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Scuola</th>
+                            <th>Ruolo</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </section>
         </main>
     </div>

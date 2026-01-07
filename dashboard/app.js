@@ -104,6 +104,7 @@ function setupNavigation() {
                 case 'schools': loadSchools(); break;
                 case 'posts': loadPendingPosts(); loadReportedPosts(); loadAllPosts(); break;
                 case 'spotted': loadPendingSpotted(); loadReportedSpotted(); loadAllSpotted(); break;
+                case 'users': break; // Users loaded on search
             }
         });
     });
@@ -639,6 +640,87 @@ async function setSpottedStatus(id, status) {
 
 function closeConfirmModal() {
     document.getElementById('confirm-modal').classList.add('hidden');
+}
+
+// Users
+function handleUserSearchKeyup(event) {
+    if (event.key === 'Enter') {
+        searchUsers();
+    }
+}
+
+async function searchUsers() {
+    const searchTerm = document.getElementById('user-search-input').value.trim();
+    const resultsDiv = document.getElementById('users-results');
+    const table = document.getElementById('users-table');
+    const tbody = document.querySelector('#users-table tbody');
+
+    if (searchTerm.length < 2) {
+        resultsDiv.innerHTML = '<div class="empty-state"><p>Inserisci almeno 2 caratteri per cercare</p></div>';
+        resultsDiv.classList.remove('hidden');
+        table.classList.add('hidden');
+        return;
+    }
+
+    try {
+        const data = await apiCall(`/users/search?q=${encodeURIComponent(searchTerm)}`);
+
+        if (!data.data || data.data.length === 0) {
+            resultsDiv.innerHTML = '<div class="empty-state"><p>Nessun utente trovato</p></div>';
+            resultsDiv.classList.remove('hidden');
+            table.classList.add('hidden');
+            return;
+        }
+
+        tbody.innerHTML = '';
+        data.data.forEach(user => {
+            const isRepresentative = user.role === 'representative';
+            const roleBadgeClass = isRepresentative ? 'badge-role-representative' : 'badge-role-user';
+            const roleLabel = isRepresentative ? 'Rappresentante' : 'Utente';
+            const buttonText = isRepresentative ? 'Rimuovi Rappresentante' : 'Rendi Rappresentante';
+            const buttonClass = isRepresentative ? 'btn-danger' : 'btn-primary';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.first_name} ${user.last_name}</td>
+                    <td>
+                        <div>${user.email}</div>
+                        ${user.personal_email ? `<div style="color:#888;font-size:0.85rem">${user.personal_email}</div>` : ''}
+                    </td>
+                    <td>${user.school_name || 'N/A'}${user.city_name ? ` (${user.city_name})` : ''}</td>
+                    <td><span class="badge ${roleBadgeClass}">${roleLabel}</span></td>
+                    <td class="actions">
+                        <button class="btn ${buttonClass} btn-small" onclick="toggleUserRole(${user.id}, '${user.role}')">${buttonText}</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        resultsDiv.classList.add('hidden');
+        table.classList.remove('hidden');
+    } catch (err) {
+        console.error('Error searching users:', err);
+        resultsDiv.innerHTML = '<div class="empty-state"><p>Errore nella ricerca</p></div>';
+        resultsDiv.classList.remove('hidden');
+        table.classList.add('hidden');
+    }
+}
+
+async function toggleUserRole(userId, currentRole) {
+    const newRole = currentRole === 'representative' ? 'user' : 'representative';
+    const action = newRole === 'representative' ? 'rendere Rappresentante' : 'rimuovere il ruolo Rappresentante a';
+
+    if (!confirm(`Sei sicuro di voler ${action} questo utente?`)) {
+        return;
+    }
+
+    try {
+        await apiCall(`/users/${userId}/role`, 'PUT', { role: newRole });
+        await searchUsers(); // Refresh results
+    } catch (err) {
+        alert('Errore nel cambio ruolo');
+    }
 }
 
 // Initialize

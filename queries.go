@@ -296,3 +296,51 @@ func SetSpottedStatus(db *pgx.Conn, spottedId int, status string) error {
 	)
 	return err
 }
+
+// ==================== USERS ====================
+
+func SearchUsers(db *pgx.Conn, searchTerm string) (pgx.Rows, error) {
+	searchPattern := "%" + searchTerm + "%"
+	return db.Query(
+		context.Background(),
+		`SELECT u.id, u.email, u.personal_email, u.first_name, u.last_name,
+		        ur.description as role,
+		        s.name as school_name, c.name as city_name
+		 FROM users u
+		 JOIN user_role ur ON u.user_role = ur.id
+		 LEFT JOIN schools s ON u.school = s.id
+		 LEFT JOIN cities c ON s.city = c.id
+		 WHERE LOWER(u.first_name) LIKE LOWER($1)
+		    OR LOWER(u.last_name) LIKE LOWER($1)
+		    OR LOWER(u.email) LIKE LOWER($1)
+		    OR LOWER(u.personal_email) LIKE LOWER($1)
+		 ORDER BY u.last_name, u.first_name
+		 LIMIT 50`,
+		searchPattern,
+	)
+}
+
+func SetUserRole(db *pgx.Conn, userId int, role string) error {
+	_, err := db.Exec(
+		context.Background(),
+		`UPDATE users SET user_role = (SELECT id FROM user_role WHERE description = $1)
+		 WHERE id = $2`,
+		role, userId,
+	)
+	return err
+}
+
+func GetUserById(db *pgx.Conn, userId int) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT u.id, u.email, u.personal_email, u.first_name, u.last_name,
+		        ur.description as role,
+		        s.name as school_name, c.name as city_name
+		 FROM users u
+		 JOIN user_role ur ON u.user_role = ur.id
+		 LEFT JOIN schools s ON u.school = s.id
+		 LEFT JOIN cities c ON s.city = c.id
+		 WHERE u.id = $1`,
+		userId,
+	)
+}
