@@ -309,8 +309,9 @@ func SearchUsers(db *pgx.Conn, searchTerm string) (pgx.Rows, error) {
 		        s.name as school_name, c.name as city_name
 		 FROM users u
 		 LEFT JOIN user_role ur ON u.user_role = ur.id
-		 LEFT JOIN schools s ON u.school = s.id
-		 LEFT JOIN cities c ON s.city = c.id
+		 LEFT JOIN users_to_school_cities utsc ON u.id = utsc.user_id
+		 LEFT JOIN schools s ON utsc.school = s.id
+		 LEFT JOIN cities c ON utsc.city = c.id
 		 WHERE LOWER(COALESCE(u.first_name, '')) LIKE LOWER($1)
 		    OR LOWER(COALESCE(u.last_name, '')) LIKE LOWER($1)
 		    OR LOWER(COALESCE(u.email, '')) LIKE LOWER($1)
@@ -340,8 +341,9 @@ func GetUserById(db *pgx.Conn, userId int) (pgx.Rows, error) {
 		        s.name as school_name, c.name as city_name
 		 FROM users u
 		 LEFT JOIN user_role ur ON u.user_role = ur.id
-		 LEFT JOIN schools s ON u.school = s.id
-		 LEFT JOIN cities c ON s.city = c.id
+		 LEFT JOIN users_to_school_cities utsc ON u.id = utsc.user_id
+		 LEFT JOIN schools s ON utsc.school = s.id
+		 LEFT JOIN cities c ON utsc.city = c.id
 		 WHERE u.id = $1`,
 		userId,
 	)

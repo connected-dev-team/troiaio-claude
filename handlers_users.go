@@ -29,6 +29,7 @@ func handleSearchUsers(ctx *gin.Context) {
 
 	db, err := makeDbaseConnection()
 	if err != nil {
+		println("DB Connection error:", err.Error())
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{
 			Status: "error",
 			Error:  "database_unreachable",
@@ -40,10 +41,11 @@ func handleSearchUsers(ctx *gin.Context) {
 
 	rows, err := SearchUsers(db, searchTerm)
 	if err != nil {
+		println("Query error:", err.Error())
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{
 			Status: "error",
 			Error:  "query_error",
-			Msg:    "Error searching users",
+			Msg:    "Error searching users: " + err.Error(),
 		})
 		return
 	}
