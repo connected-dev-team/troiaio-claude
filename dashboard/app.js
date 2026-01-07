@@ -1,5 +1,6 @@
 const API_BASE = '/api';
 let token = localStorage.getItem('moderator_token');
+let userRole = localStorage.getItem('moderator_role') || 'full';
 
 // Helper functions
 async function apiCall(endpoint, method = 'GET', body = null) {
@@ -50,7 +51,9 @@ async function login(e) {
 
         if (data.status === 'ok') {
             token = data.token;
+            userRole = data.role || 'full';
             localStorage.setItem('moderator_token', token);
+            localStorage.setItem('moderator_role', userRole);
             showDashboard();
         } else {
             errorEl.textContent = data.msg || 'Credenziali non valide';
@@ -62,9 +65,14 @@ async function login(e) {
 
 function logout() {
     token = null;
+    userRole = 'full';
     localStorage.removeItem('moderator_token');
+    localStorage.removeItem('moderator_role');
     document.getElementById('login-page').classList.remove('hidden');
     document.getElementById('dashboard-page').classList.add('hidden');
+
+    // Reset menu visibility
+    document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('hidden'));
 }
 
 async function checkAuth() {
@@ -80,7 +88,29 @@ async function checkAuth() {
 async function showDashboard() {
     document.getElementById('login-page').classList.add('hidden');
     document.getElementById('dashboard-page').classList.remove('hidden');
-    await loadCities();
+
+    // Check if user has limited access (users_only)
+    if (userRole === 'users_only') {
+        // Hide all menu items except "Utenti"
+        document.querySelectorAll('.nav-links li').forEach(li => {
+            const link = li.querySelector('a');
+            if (link && link.dataset.section !== 'users') {
+                li.classList.add('hidden');
+            }
+        });
+
+        // Show only users section
+        document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+        document.getElementById('users-section').classList.remove('hidden');
+
+        // Set users link as active
+        document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+        const usersLink = document.querySelector('.nav-links a[data-section="users"]');
+        if (usersLink) usersLink.classList.add('active');
+    } else {
+        // Full access - load cities as default
+        await loadCities();
+    }
 }
 
 // Navigation

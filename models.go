@@ -19,6 +19,7 @@ type LoginResponse struct {
 	Status    string     `json:"status"`
 	Token     string     `json:"token,omitempty"`
 	Moderator *Moderator `json:"moderator,omitempty"`
+	Role      string     `json:"role,omitempty"`
 	Error     string     `json:"error,omitempty"`
 	Msg       string     `json:"msg,omitempty"`
 }

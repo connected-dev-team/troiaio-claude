@@ -56,43 +56,49 @@ func main() {
 		protected := api.Group("")
 		protected.Use(authMiddleware())
 		{
-			// Verify token
+			// Verify token (accessible to all authenticated users)
 			protected.GET("/verify", handleVerify)
 
-			// Cities CRUD
-			protected.GET("/cities", handleGetCities)
-			protected.POST("/cities", handleAddCity)
-			protected.PUT("/cities/:id", handleUpdateCity)
-			protected.DELETE("/cities/:id", handleDeleteCity)
-
-			// Schools CRUD
-			protected.GET("/schools", handleGetSchools)
-			protected.POST("/schools", handleAddSchool)
-			protected.PUT("/schools/:id", handleUpdateSchool)
-			protected.DELETE("/schools/:id", handleDeleteSchool)
-
-			// Posts moderation
-			protected.GET("/posts", handleGetAllPosts)
-			protected.GET("/posts/pending", handleGetPendingPosts)
-			protected.GET("/posts/reported", handleGetReportedPosts)
-			protected.PUT("/posts/:id/approve", handleApprovePost)
-			protected.PUT("/posts/:id/reject", handleRejectPost)
-			protected.PUT("/posts/:id/status", handleSetPostStatus)
-			protected.DELETE("/posts/:id", handleDeletePost)
-
-			// Spotted moderation
-			protected.GET("/spotted", handleGetAllSpotted)
-			protected.GET("/spotted/pending", handleGetPendingSpotted)
-			protected.GET("/spotted/reported", handleGetReportedSpotted)
-			protected.PUT("/spotted/:id/approve", handleApproveSpotted)
-			protected.PUT("/spotted/:id/reject", handleRejectSpotted)
-			protected.PUT("/spotted/:id/status", handleSetSpottedStatus)
-			protected.DELETE("/spotted/:id", handleDeleteSpotted)
-
-			// Users management
+			// Users management (accessible to all authenticated users)
 			protected.GET("/users/search", handleSearchUsers)
 			protected.GET("/users/:id", handleGetUser)
 			protected.PUT("/users/:id/role", handleSetUserRole)
+		}
+
+		// Full access routes (blocked for users_only role)
+		fullAccess := api.Group("")
+		fullAccess.Use(authMiddleware())
+		fullAccess.Use(requireFullAccess())
+		{
+			// Cities CRUD
+			fullAccess.GET("/cities", handleGetCities)
+			fullAccess.POST("/cities", handleAddCity)
+			fullAccess.PUT("/cities/:id", handleUpdateCity)
+			fullAccess.DELETE("/cities/:id", handleDeleteCity)
+
+			// Schools CRUD
+			fullAccess.GET("/schools", handleGetSchools)
+			fullAccess.POST("/schools", handleAddSchool)
+			fullAccess.PUT("/schools/:id", handleUpdateSchool)
+			fullAccess.DELETE("/schools/:id", handleDeleteSchool)
+
+			// Posts moderation
+			fullAccess.GET("/posts", handleGetAllPosts)
+			fullAccess.GET("/posts/pending", handleGetPendingPosts)
+			fullAccess.GET("/posts/reported", handleGetReportedPosts)
+			fullAccess.PUT("/posts/:id/approve", handleApprovePost)
+			fullAccess.PUT("/posts/:id/reject", handleRejectPost)
+			fullAccess.PUT("/posts/:id/status", handleSetPostStatus)
+			fullAccess.DELETE("/posts/:id", handleDeletePost)
+
+			// Spotted moderation
+			fullAccess.GET("/spotted", handleGetAllSpotted)
+			fullAccess.GET("/spotted/pending", handleGetPendingSpotted)
+			fullAccess.GET("/spotted/reported", handleGetReportedSpotted)
+			fullAccess.PUT("/spotted/:id/approve", handleApproveSpotted)
+			fullAccess.PUT("/spotted/:id/reject", handleRejectSpotted)
+			fullAccess.PUT("/spotted/:id/status", handleSetSpottedStatus)
+			fullAccess.DELETE("/spotted/:id", handleDeleteSpotted)
 		}
 	}
 

@@ -11,13 +11,22 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// Credenziali statiche per accesso limitato (solo gestione utenti/rappresentanti)
+const (
+	STATIC_USERNAME = "AggiuntaRappresentanti"
+	STATIC_PASSWORD = "CONNrap1"
+	ROLE_FULL       = "full"
+	ROLE_USERS_ONLY = "users_only"
+)
+
 func hashPassword(password string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(password)))
 }
 
-func generateToken(moderatorId int) (string, error) {
+func generateToken(moderatorId int, role string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
 		"moderator_id": moderatorId,
+		"role":         role,
 		"exp":          time.Now().Add(24 * time.Hour).Unix(),
 		"iat":          time.Now().Unix(),
 		"type":         "moderator_session",
@@ -25,7 +34,7 @@ func generateToken(moderatorId int) (string, error) {
 	return token.SignedString([]byte(CONF.JWT_SECRET))
 }
 
-func validateToken(tokenString string) (int, error) {
+func validateToken(tokenString string) (int, string, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
@@ -34,23 +43,29 @@ func validateToken(tokenString string) (int, error) {
 	})
 
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		tokenType, _ := claims["type"].(string)
 		if tokenType != "moderator_session" {
-			return 0, fmt.Errorf("invalid token type")
+			return 0, "", fmt.Errorf("invalid token type")
 		}
 
 		moderatorId, ok := claims["moderator_id"].(float64)
 		if !ok {
-			return 0, fmt.Errorf("invalid moderator_id")
+			return 0, "", fmt.Errorf("invalid moderator_id")
 		}
-		return int(moderatorId), nil
+
+		role, _ := claims["role"].(string)
+		if role == "" {
+			role = ROLE_FULL // Default per retrocompatibilità
+		}
+
+		return int(moderatorId), role, nil
 	}
 
-	return 0, fmt.Errorf("invalid token")
+	return 0, "", fmt.Errorf("invalid token")
 }
 
 func authMiddleware() gin.HandlerFunc {
@@ -77,7 +92,7 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		moderatorId, err := validateToken(parts[1])
+		moderatorId, role, err := validateToken(parts[1])
 		if err != nil {
 			ctx.JSON(http.StatusUnauthorized, ErrorResponse{
 				Status: "error",
@@ -89,6 +104,24 @@ func authMiddleware() gin.HandlerFunc {
 		}
 
 		ctx.Set("moderator_id", moderatorId)
+		ctx.Set("role", role)
+		ctx.Next()
+	}
+}
+
+// Middleware per verificare accesso completo (blocca users_only)
+func requireFullAccess() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		role, _ := ctx.Get("role")
+		if role == ROLE_USERS_ONLY {
+			ctx.JSON(http.StatusForbidden, ErrorResponse{
+				Status: "error",
+				Error:  "access_denied",
+				Msg:    "Non hai i permessi per questa sezione",
+			})
+			ctx.Abort()
+			return
+		}
 		ctx.Next()
 	}
 }
@@ -104,6 +137,32 @@ func handleLogin(ctx *gin.Context) {
 		return
 	}
 
+	// Check static credentials first (users_only role)
+	if req.Username == STATIC_USERNAME && req.Password == STATIC_PASSWORD {
+		token, err := generateToken(-1, ROLE_USERS_ONLY)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, ErrorResponse{
+				Status: "error",
+				Error:  "token_error",
+				Msg:    "Error generating token",
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, LoginResponse{
+			Status: "ok",
+			Token:  token,
+			Moderator: &Moderator{
+				ID:       -1,
+				Username: STATIC_USERNAME,
+				Name:     "Gestione Rappresentanti",
+			},
+			Role: ROLE_USERS_ONLY,
+		})
+		return
+	}
+
+	// Check database credentials (full access)
 	db, err := makeDbaseConnection()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{
@@ -146,7 +205,7 @@ func handleLogin(ctx *gin.Context) {
 		return
 	}
 
-	token, err := generateToken(moderator.ID)
+	token, err := generateToken(moderator.ID, ROLE_FULL)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{
 			Status: "error",
@@ -160,6 +219,7 @@ func handleLogin(ctx *gin.Context) {
 		Status:    "ok",
 		Token:     token,
 		Moderator: &moderator,
+		Role:      ROLE_FULL,
 	})
 }
 
