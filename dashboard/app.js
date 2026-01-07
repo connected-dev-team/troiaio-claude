@@ -753,6 +753,29 @@ async function toggleUserRole(userId, currentRole) {
     }
 }
 
+// Expose functions to global scope for onclick handlers
+window.searchUsers = searchUsers;
+window.handleUserSearchKeyup = handleUserSearchKeyup;
+window.toggleUserRole = toggleUserRole;
+window.showAddCityModal = showAddCityModal;
+window.editCity = editCity;
+window.closeCityModal = closeCityModal;
+window.confirmDeleteCity = confirmDeleteCity;
+window.showAddSchoolModal = showAddSchoolModal;
+window.editSchool = editSchool;
+window.closeSchoolModal = closeSchoolModal;
+window.confirmDeleteSchool = confirmDeleteSchool;
+window.loadSchools = loadSchools;
+window.approvePost = approvePost;
+window.rejectPost = rejectPost;
+window.confirmDeletePost = confirmDeletePost;
+window.setPostStatus = setPostStatus;
+window.approveSpotted = approveSpotted;
+window.rejectSpotted = rejectSpotted;
+window.confirmDeleteSpotted = confirmDeleteSpotted;
+window.setSpottedStatus = setSpottedStatus;
+window.closeConfirmModal = closeConfirmModal;
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('login-form').addEventListener('submit', login);
