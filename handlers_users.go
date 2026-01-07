@@ -8,6 +8,10 @@ import (
 )
 
 func handleSearchUsers(ctx *gin.Context) {
+	println("REQUEST URI:", ctx.Request.RequestURI)
+	println("RAW QUERY:", ctx.Request.URL.RawQuery)
+	println("Q PARAM:", ctx.Query("q"))
+
 	searchTerm := ctx.Query("q")
 	if ctx.Request.Method == "OPTIONS" {
 		ctx.Status(http.StatusNoContent)
