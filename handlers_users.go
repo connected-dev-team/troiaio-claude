@@ -9,6 +9,10 @@ import (
 
 func handleSearchUsers(ctx *gin.Context) {
 	searchTerm := ctx.Query("q")
+	if ctx.Request.Method == "OPTIONS" {
+		ctx.Status(http.StatusNoContent)
+		return
+	}
 	if searchTerm == "" {
 		ctx.JSON(http.StatusBadRequest, ErrorResponse{
 			Status: "error",
