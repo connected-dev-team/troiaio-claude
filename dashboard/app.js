@@ -8,6 +8,9 @@ async function apiCall(endpoint, method = 'GET', body = null) {
         'Content-Type': 'application/json',
     };
 
+    // Debug: controlla il token
+    console.log('apiCall to:', endpoint, '| token exists:', !!token, '| token value:', token ? token.substring(0, 20) + '...' : 'NULL');
+
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
