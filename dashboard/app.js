@@ -102,8 +102,8 @@ function setupNavigation() {
             switch(section) {
                 case 'cities': loadCities(); break;
                 case 'schools': loadSchools(); break;
-                case 'posts': loadPendingPosts(); loadReportedPosts(); break;
-                case 'spotted': loadPendingSpotted(); loadReportedSpotted(); break;
+                case 'posts': loadPendingPosts(); loadReportedPosts(); loadAllPosts(); break;
+                case 'spotted': loadPendingSpotted(); loadReportedSpotted(); loadAllSpotted(); break;
             }
         });
     });
@@ -412,8 +412,69 @@ async function deletePost(id) {
         closeConfirmModal();
         await loadPendingPosts();
         await loadReportedPosts();
+        await loadAllPosts();
     } catch (err) {
         alert('Errore nell\'eliminazione');
+    }
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'received': '<span class="badge badge-warning">In attesa</span>',
+        'approved': '<span class="badge badge-success">Approvato</span>',
+        'rejected': '<span class="badge badge-danger">Rifiutato</span>'
+    };
+    return badges[status] || status;
+}
+
+async function loadAllPosts() {
+    try {
+        const data = await apiCall('/posts');
+        const container = document.getElementById('all-posts-list');
+
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Nessun post trovato</p></div>';
+            return;
+        }
+
+        container.innerHTML = data.data.map(post => `
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <strong>${post.creator_first_name} ${post.creator_last_name}</strong>
+                        ${getStatusBadge(post.status)}
+                    </div>
+                </div>
+                <div class="card-meta">
+                    <span>Email: ${post.creator_email}</span>
+                    <span>${post.school_name || 'N/A'} - ${post.city_name || 'N/A'}</span>
+                    <span>${formatDate(post.creation_timestamp)}</span>
+                </div>
+                <div class="card-content">${post.content}</div>
+                <div class="card-actions">
+                    <select onchange="setPostStatus(${post.id}, this.value)" class="status-select">
+                        <option value="">Cambia stato...</option>
+                        <option value="received" ${post.status === 'received' ? 'disabled' : ''}>In attesa</option>
+                        <option value="approved" ${post.status === 'approved' ? 'disabled' : ''}>Approvato</option>
+                        <option value="rejected" ${post.status === 'rejected' ? 'disabled' : ''}>Rifiutato</option>
+                    </select>
+                    <button class="btn btn-danger btn-small" onclick="confirmDeletePost(${post.id})">Elimina</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading all posts:', err);
+    }
+}
+
+async function setPostStatus(id, status) {
+    if (!status) return;
+    try {
+        await apiCall(`/posts/${id}/status`, 'PUT', { status });
+        await loadAllPosts();
+        await loadPendingPosts();
+    } catch (err) {
+        alert('Errore nel cambio stato');
     }
 }
 
@@ -432,11 +493,12 @@ async function loadPendingSpotted() {
             <div class="card" style="border-left: 4px solid ${s.color || '#6366f1'}">
                 <div class="card-header">
                     <div>
-                        <strong>Spotted Anonimo</strong>
+                        <strong>${s.creator_first_name} ${s.creator_last_name}</strong>
                         <span class="badge badge-warning">${s.visibility_desc}</span>
                     </div>
                 </div>
                 <div class="card-meta">
+                    <span>Email: ${s.creator_email}</span>
                     <span>${s.school_name || 'N/A'} - ${s.city_name || 'N/A'}</span>
                     <span>${formatDate(s.creation_timestamp)}</span>
                 </div>
@@ -467,11 +529,12 @@ async function loadReportedSpotted() {
             <div class="card" style="border-left: 4px solid ${s.color || '#6366f1'}">
                 <div class="card-header">
                     <div>
-                        <strong>Spotted Anonimo</strong>
+                        <strong>${s.creator_first_name} ${s.creator_last_name}</strong>
                         <span class="badge badge-danger">${s.report_count} segnalazioni</span>
                     </div>
                 </div>
                 <div class="card-meta">
+                    <span>Email: ${s.creator_email}</span>
                     <span>${s.school_name || 'N/A'} - ${s.city_name || 'N/A'}</span>
                     <span>${formatDate(s.creation_timestamp)}</span>
                 </div>
@@ -516,8 +579,61 @@ async function deleteSpotted(id) {
         closeConfirmModal();
         await loadPendingSpotted();
         await loadReportedSpotted();
+        await loadAllSpotted();
     } catch (err) {
         alert('Errore nell\'eliminazione');
+    }
+}
+
+async function loadAllSpotted() {
+    try {
+        const data = await apiCall('/spotted');
+        const container = document.getElementById('all-spotted-list');
+
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Nessuno spotted trovato</p></div>';
+            return;
+        }
+
+        container.innerHTML = data.data.map(s => `
+            <div class="card" style="border-left: 4px solid ${s.color || '#6366f1'}">
+                <div class="card-header">
+                    <div>
+                        <strong>${s.creator_first_name} ${s.creator_last_name}</strong>
+                        ${getStatusBadge(s.status)}
+                        <span class="badge">${s.visibility_desc}</span>
+                    </div>
+                </div>
+                <div class="card-meta">
+                    <span>Email: ${s.creator_email}</span>
+                    <span>${s.school_name || 'N/A'} - ${s.city_name || 'N/A'}</span>
+                    <span>${formatDate(s.creation_timestamp)}</span>
+                </div>
+                <div class="card-content">${s.content}</div>
+                <div class="card-actions">
+                    <select onchange="setSpottedStatus(${s.id}, this.value)" class="status-select">
+                        <option value="">Cambia stato...</option>
+                        <option value="received" ${s.status === 'received' ? 'disabled' : ''}>In attesa</option>
+                        <option value="approved" ${s.status === 'approved' ? 'disabled' : ''}>Approvato</option>
+                        <option value="rejected" ${s.status === 'rejected' ? 'disabled' : ''}>Rifiutato</option>
+                    </select>
+                    <button class="btn btn-danger btn-small" onclick="confirmDeleteSpotted(${s.id})">Elimina</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading all spotted:', err);
+    }
+}
+
+async function setSpottedStatus(id, status) {
+    if (!status) return;
+    try {
+        await apiCall(`/spotted/${id}/status`, 'PUT', { status });
+        await loadAllSpotted();
+        await loadPendingSpotted();
+    } catch (err) {
+        alert('Errore nel cambio stato');
     }
 }
 

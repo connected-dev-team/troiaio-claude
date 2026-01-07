@@ -77,6 +77,24 @@ type ReportedPost struct {
 	ReportCount int `json:"report_count"`
 }
 
+type AllPost struct {
+	ID                int       `json:"id"`
+	Content           string    `json:"content"`
+	CreatorID         int       `json:"creator_id"`
+	CreationTimestamp time.Time `json:"creation_timestamp"`
+	LikesCount        int       `json:"likes_count"`
+	CreatorFirstName  string    `json:"creator_first_name"`
+	CreatorLastName   string    `json:"creator_last_name"`
+	CreatorEmail      string    `json:"creator_email"`
+	SchoolName        *string   `json:"school_name"`
+	CityName          *string   `json:"city_name"`
+	Status            string    `json:"status"`
+}
+
+type SetStatusRequest struct {
+	Status string `json:"status"`
+}
+
 // ==================== SPOTTED ====================
 
 type PendingSpotted struct {
@@ -98,6 +116,23 @@ type PendingSpotted struct {
 type ReportedSpotted struct {
 	PendingSpotted
 	ReportCount int `json:"report_count"`
+}
+
+type AllSpotted struct {
+	ID                int       `json:"id"`
+	Content           string    `json:"content"`
+	CreatorID         int       `json:"creator_id"`
+	CreationTimestamp time.Time `json:"creation_timestamp"`
+	LikesCount        int       `json:"likes_count"`
+	Visibility        int       `json:"visibility"`
+	VisibilityDesc    string    `json:"visibility_desc"`
+	Color             string    `json:"color"`
+	CreatorFirstName  string    `json:"creator_first_name"`
+	CreatorLastName   string    `json:"creator_last_name"`
+	CreatorEmail      string    `json:"creator_email"`
+	SchoolName        *string   `json:"school_name"`
+	CityName          *string   `json:"city_name"`
+	Status            string    `json:"status"`
 }
 
 // ==================== GENERIC RESPONSES ====================

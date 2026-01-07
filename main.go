@@ -72,17 +72,21 @@ func main() {
 			protected.DELETE("/schools/:id", handleDeleteSchool)
 
 			// Posts moderation
+			protected.GET("/posts", handleGetAllPosts)
 			protected.GET("/posts/pending", handleGetPendingPosts)
 			protected.GET("/posts/reported", handleGetReportedPosts)
 			protected.PUT("/posts/:id/approve", handleApprovePost)
 			protected.PUT("/posts/:id/reject", handleRejectPost)
+			protected.PUT("/posts/:id/status", handleSetPostStatus)
 			protected.DELETE("/posts/:id", handleDeletePost)
 
 			// Spotted moderation
+			protected.GET("/spotted", handleGetAllSpotted)
 			protected.GET("/spotted/pending", handleGetPendingSpotted)
 			protected.GET("/spotted/reported", handleGetReportedSpotted)
 			protected.PUT("/spotted/:id/approve", handleApproveSpotted)
 			protected.PUT("/spotted/:id/reject", handleRejectSpotted)
+			protected.PUT("/spotted/:id/status", handleSetSpottedStatus)
 			protected.DELETE("/spotted/:id", handleDeleteSpotted)
 		}
 	}

@@ -169,6 +169,32 @@ func DeletePostById(db *pgx.Conn, postId int) error {
 	return err
 }
 
+func QueryAllPosts(db *pgx.Conn) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT p.id, p.content, p.creator, p.creation_timestamp, p.likes_count,
+		        u.first_name, u.last_name, u.email,
+		        s.name as school_name, c.name as city_name,
+		        ss.description as status
+		 FROM post p
+		 JOIN users u ON p.creator = u.id
+		 LEFT JOIN schools s ON u.school = s.id
+		 LEFT JOIN cities c ON s.city = c.id
+		 JOIN submit_status ss ON p.status = ss.id
+		 ORDER BY p.creation_timestamp DESC`,
+	)
+}
+
+func SetPostStatus(db *pgx.Conn, postId int, status string) error {
+	_, err := db.Exec(
+		context.Background(),
+		`UPDATE post SET status = (SELECT id FROM submit_status WHERE description=$1)
+		 WHERE id = $2`,
+		status, postId,
+	)
+	return err
+}
+
 // ==================== SPOTTED ====================
 
 func QueryPendingSpotted(db *pgx.Conn) (pgx.Rows, error) {
@@ -239,5 +265,34 @@ func DeleteSpottedById(db *pgx.Conn, spottedId int) error {
 	db.Exec(context.Background(), "DELETE FROM reported_spotted WHERE spotted_id = $1", spottedId)
 	// Finally delete the spotted
 	_, err := db.Exec(context.Background(), "DELETE FROM spotted WHERE id = $1", spottedId)
+	return err
+}
+
+func QueryAllSpotted(db *pgx.Conn) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT sp.id, sp.content, sp.creator, sp.creation_timestamp, sp.likes_count,
+		        sp.visibility, sp.color,
+		        u.first_name, u.last_name, u.email,
+		        s.name as school_name, c.name as city_name,
+		        sv.description as visibility_desc,
+		        ss.description as status
+		 FROM spotted sp
+		 JOIN users u ON sp.creator = u.id
+		 LEFT JOIN schools s ON u.school = s.id
+		 LEFT JOIN cities c ON s.city = c.id
+		 JOIN spotted_visibility sv ON sp.visibility = sv.id
+		 JOIN submit_status ss ON sp.status = ss.id
+		 ORDER BY sp.creation_timestamp DESC`,
+	)
+}
+
+func SetSpottedStatus(db *pgx.Conn, spottedId int, status string) error {
+	_, err := db.Exec(
+		context.Background(),
+		`UPDATE spotted SET status = (SELECT id FROM submit_status WHERE description=$1)
+		 WHERE id = $2`,
+		status, spottedId,
+	)
 	return err
 }

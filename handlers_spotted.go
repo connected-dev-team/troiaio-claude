@@ -206,3 +206,105 @@ func handleDeleteSpotted(ctx *gin.Context) {
 		Msg:    "Spotted deleted successfully",
 	})
 }
+
+func handleGetAllSpotted(ctx *gin.Context) {
+	db, err := makeDbaseConnection()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{
+			Status: "error",
+			Error:  "database_unreachable",
+			Msg:    "Cannot connect to database",
+		})
+		return
+	}
+	defer db.Close(ctx)
+
+	rows, err := QueryAllSpotted(db)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{
+			Status: "error",
+			Error:  "query_error",
+			Msg:    "Error querying spotted",
+		})
+		return
+	}
+	defer rows.Close()
+
+	var spotted []AllSpotted
+	for rows.Next() {
+		var s AllSpotted
+		if err := rows.Scan(
+			&s.ID, &s.Content, &s.CreatorID, &s.CreationTimestamp,
+			&s.LikesCount, &s.Visibility, &s.Color,
+			&s.CreatorFirstName, &s.CreatorLastName, &s.CreatorEmail,
+			&s.SchoolName, &s.CityName, &s.VisibilityDesc, &s.Status,
+		); err != nil {
+			continue
+		}
+		spotted = append(spotted, s)
+	}
+
+	ctx.JSON(http.StatusOK, DataResponse{
+		Status: "ok",
+		Data:   spotted,
+	})
+}
+
+func handleSetSpottedStatus(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{
+			Status: "error",
+			Error:  "invalid_id",
+			Msg:    "Invalid spotted ID",
+		})
+		return
+	}
+
+	var req SetStatusRequest
+	if err := ctx.BindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{
+			Status: "error",
+			Error:  "malformed_json",
+			Msg:    "Invalid request body",
+		})
+		return
+	}
+
+	// Validate status
+	validStatuses := map[string]bool{"received": true, "approved": true, "rejected": true}
+	if !validStatuses[req.Status] {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{
+			Status: "error",
+			Error:  "invalid_status",
+			Msg:    "Status must be: received, approved, or rejected",
+		})
+		return
+	}
+
+	db, err := makeDbaseConnection()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{
+			Status: "error",
+			Error:  "database_unreachable",
+			Msg:    "Cannot connect to database",
+		})
+		return
+	}
+	defer db.Close(ctx)
+
+	if err := SetSpottedStatus(db, id, req.Status); err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{
+			Status: "error",
+			Error:  "update_error",
+			Msg:    "Error updating spotted status",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, SuccessResponse{
+		Status: "ok",
+		Msg:    "Spotted status updated successfully",
+	})
+}
