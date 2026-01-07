@@ -3,20 +3,14 @@ package main
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 func handleSearchUsers(ctx *gin.Context) {
-	println("REQUEST URI:", ctx.Request.RequestURI)
-	println("RAW QUERY:", ctx.Request.URL.RawQuery)
-	println("Q PARAM:", ctx.Query("q"))
+	searchTerm := strings.TrimSpace(ctx.Query("q"))
 
-	searchTerm := ctx.Query("q")
-	if ctx.Request.Method == "OPTIONS" {
-		ctx.Status(http.StatusNoContent)
-		return
-	}
 	if searchTerm == "" {
 		ctx.JSON(http.StatusBadRequest, ErrorResponse{
 			Status: "error",
@@ -37,7 +31,6 @@ func handleSearchUsers(ctx *gin.Context) {
 
 	db, err := makeDbaseConnection()
 	if err != nil {
-		println("DB Connection error:", err.Error())
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{
 			Status: "error",
 			Error:  "database_unreachable",
@@ -49,33 +42,31 @@ func handleSearchUsers(ctx *gin.Context) {
 
 	rows, err := SearchUsers(db, searchTerm)
 	if err != nil {
-		println("Query error:", err.Error())
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{
 			Status: "error",
 			Error:  "query_error",
-			Msg:    "Error searching users: " + err.Error(),
+			Msg:    err.Error(),
 		})
 		return
 	}
 	defer rows.Close()
 
-	var users []User
+	users := []User{}
+
 	for rows.Next() {
 		var user User
 		if err := rows.Scan(
-			&user.ID, &user.Email, &user.PersonalEmail,
-			&user.FirstName, &user.LastName, &user.Role,
-			&user.SchoolName, &user.CityName,
-		); err != nil {
-			// Log scan error for debugging
-			println("Scan error:", err.Error())
-			continue
+			&user.ID,
+			&user.Email,
+			&user.PersonalEmail,
+			&user.FirstName,
+			&user.LastName,
+			&user.Role,
+			&user.SchoolName,
+			&user.CityName,
+		); err == nil {
+			users = append(users, user)
 		}
-		users = append(users, user)
-	}
-
-	if users == nil {
-		users = []User{}
 	}
 
 	ctx.JSON(http.StatusOK, DataResponse{
