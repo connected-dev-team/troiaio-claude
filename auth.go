@@ -70,6 +70,10 @@ func validateToken(tokenString string) (int, string, error) {
 
 func authMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		if ctx.Request.Method == "OPTIONS" {
+			ctx.AbortWithStatus(http.StatusNoContent)
+			return
+		}
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
 			ctx.JSON(http.StatusUnauthorized, ErrorResponse{
