@@ -8,9 +8,6 @@ async function apiCall(endpoint, method = 'GET', body = null) {
         'Content-Type': 'application/json',
     };
 
-    // Debug: controlla il token
-    console.log('apiCall to:', endpoint, '| token exists:', !!token, '| token value:', token ? token.substring(0, 20) + '...' : 'NULL');
-
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
@@ -111,8 +108,8 @@ async function showDashboard() {
         const usersLink = document.querySelector('.nav-links a[data-section="users"]');
         if (usersLink) usersLink.classList.add('active');
     } else {
-        // Full access - load cities as default
-        await loadCities();
+        // Full access - load statistics as default
+        await loadStatistics();
     }
 }
 
@@ -133,6 +130,7 @@ function setupNavigation() {
 
             // Load data
             switch(section) {
+                case 'statistics': loadStatistics(); break;
                 case 'cities': loadCities(); break;
                 case 'schools': loadSchools(); break;
                 case 'posts': loadPendingPosts(); loadReportedPosts(); loadAllPosts(); break;
@@ -675,6 +673,199 @@ function closeConfirmModal() {
     document.getElementById('confirm-modal').classList.add('hidden');
 }
 
+// Statistics
+let cachedStats = null;
+let cachedSchoolsStats = [];
+
+async function loadStatistics() {
+    try {
+        const data = await apiCall('/statistics');
+        if (data.status !== 'ok') {
+            console.error('Error loading statistics');
+            return;
+        }
+
+        cachedStats = data.data;
+        cachedSchoolsStats = data.data.schools_stats || [];
+
+        // Update overview cards
+        document.getElementById('stat-total-users').textContent = formatNumber(data.data.totals.total_users);
+        document.getElementById('stat-total-posts').textContent = formatNumber(data.data.totals.total_posts);
+        document.getElementById('stat-total-spotted').textContent = formatNumber(data.data.totals.total_spotted);
+        document.getElementById('stat-total-interactions').textContent = formatNumber(data.data.totals.total_interactions);
+        document.getElementById('stat-total-cities').textContent = formatNumber(data.data.totals.total_cities);
+        document.getElementById('stat-total-schools').textContent = formatNumber(data.data.totals.total_schools);
+
+        // Render rankings
+        renderTopCities(data.data.top_cities);
+        renderTopSchools(data.data.top_schools);
+
+        // Render cities stats
+        renderCitiesStats(data.data.cities_stats);
+
+        // Render schools stats
+        renderSchoolsStats(data.data.schools_stats);
+
+        // Populate city filter for schools
+        populateStatsCityFilter(data.data.cities_stats);
+
+        // Render temporal data
+        renderTemporalStats(data.data.users_over_time, 'users-time-table');
+        renderTemporalStats(data.data.posts_over_time, 'posts-time-table');
+        renderTemporalStats(data.data.spotted_over_time, 'spotted-time-table');
+
+    } catch (err) {
+        console.error('Error loading statistics:', err);
+    }
+}
+
+function formatNumber(num) {
+    if (num === undefined || num === null) return '0';
+    return num.toLocaleString('it-IT');
+}
+
+function renderTopCities(cities) {
+    const tbody = document.getElementById('top-cities-table');
+    if (!cities || cities.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nessun dato disponibile</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = cities.map((city, index) => `
+        <tr>
+            <td class="rank-cell">${index + 1}</td>
+            <td>${city.name}</td>
+            <td>${city.region || '-'}</td>
+            <td><strong>${formatNumber(city.user_count)}</strong></td>
+        </tr>
+    `).join('');
+}
+
+function renderTopSchools(schools) {
+    const tbody = document.getElementById('top-schools-table');
+    if (!schools || schools.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nessun dato disponibile</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = schools.map((school, index) => `
+        <tr>
+            <td class="rank-cell">${index + 1}</td>
+            <td>${school.name}</td>
+            <td>${school.city_name}</td>
+            <td><strong>${formatNumber(school.user_count)}</strong></td>
+        </tr>
+    `).join('');
+}
+
+function renderCitiesStats(cities) {
+    const tbody = document.getElementById('cities-stats-table');
+    if (!cities || cities.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nessun dato disponibile</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = cities.map(city => `
+        <tr>
+            <td><strong>${city.name}</strong></td>
+            <td>${city.region || '-'}</td>
+            <td>${formatNumber(city.user_count)}</td>
+            <td>${formatNumber(city.school_count)}</td>
+            <td>${formatNumber(city.post_count)}</td>
+            <td>${formatNumber(city.spotted_count)}</td>
+        </tr>
+    `).join('');
+}
+
+function renderSchoolsStats(schools) {
+    const tbody = document.getElementById('schools-stats-table');
+    if (!schools || schools.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nessun dato disponibile</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = schools.map(school => `
+        <tr>
+            <td><strong>${school.name}</strong></td>
+            <td>${school.city_name}</td>
+            <td>${formatNumber(school.user_count)}</td>
+            <td>${formatNumber(school.post_count)}</td>
+            <td>${formatNumber(school.spotted_count)}</td>
+        </tr>
+    `).join('');
+}
+
+function populateStatsCityFilter(cities) {
+    const select = document.getElementById('stats-city-filter');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Tutte le città</option>' +
+        (cities || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function filterSchoolsStats() {
+    const cityId = document.getElementById('stats-city-filter').value;
+
+    if (!cityId) {
+        renderSchoolsStats(cachedSchoolsStats);
+    } else {
+        const filtered = cachedSchoolsStats.filter(s => s.city_id == cityId);
+        renderSchoolsStats(filtered);
+    }
+}
+
+function renderTemporalStats(data, tableId) {
+    const tbody = document.getElementById(tableId);
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Nessun dato disponibile</td></tr>';
+        return;
+    }
+
+    // Find max value for bar scaling
+    const maxCount = Math.max(...data.map(d => d.count));
+
+    // Reverse to show oldest first (chronological order)
+    const sortedData = [...data].reverse();
+
+    tbody.innerHTML = sortedData.map(item => {
+        const barWidth = maxCount > 0 ? (item.count / maxCount * 100) : 0;
+        const monthName = formatMonth(item.month);
+        return `
+            <tr>
+                <td>${monthName}</td>
+                <td><strong>${formatNumber(item.count)}</strong></td>
+                <td class="bar-cell">
+                    <div class="bar" style="width: ${barWidth}%"></div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function formatMonth(monthStr) {
+    if (!monthStr) return '-';
+    const [year, month] = monthStr.split('-');
+    const months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    const monthIndex = parseInt(month) - 1;
+    return `${months[monthIndex]} ${year}`;
+}
+
+function setupStatsTabs() {
+    document.querySelectorAll('[data-stats-tab]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tab = e.target.dataset.statsTab;
+
+            // Update active button
+            document.querySelectorAll('[data-stats-tab]').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+
+            // Show corresponding content
+            document.querySelectorAll('.stats-tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`${tab}-tab`).classList.remove('hidden');
+        });
+    });
+}
+
 // Users
 function handleUserSearchKeyup(event) {
     if (event.key === 'Enter') {
@@ -778,6 +969,8 @@ window.rejectSpotted = rejectSpotted;
 window.confirmDeleteSpotted = confirmDeleteSpotted;
 window.setSpottedStatus = setSpottedStatus;
 window.closeConfirmModal = closeConfirmModal;
+window.loadStatistics = loadStatistics;
+window.filterSchoolsStats = filterSchoolsStats;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -787,6 +980,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('school-form').addEventListener('submit', saveSchool);
 
     setupNavigation();
+    setupStatsTabs();
 
     if (await checkAuth()) {
         showDashboard();

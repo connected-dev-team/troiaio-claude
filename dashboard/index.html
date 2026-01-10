@@ -29,7 +29,8 @@
                 <p>Dashboard</p>
             </div>
             <ul class="nav-links">
-                <li><a href="#" data-section="cities" class="active">Città</a></li>
+                <li><a href="#" data-section="statistics" class="active">Statistiche</a></li>
+                <li><a href="#" data-section="cities">Città</a></li>
                 <li><a href="#" data-section="schools">Scuole</a></li>
                 <li><a href="#" data-section="posts">Post</a></li>
                 <li><a href="#" data-section="spotted">Spotted</a></li>
@@ -39,8 +40,172 @@
         </nav>
 
         <main class="content">
+            <!-- Statistics Section -->
+            <section id="statistics-section" class="section">
+                <div class="section-header">
+                    <h2>Statistiche</h2>
+                    <button class="btn btn-secondary" onclick="loadStatistics()">Aggiorna</button>
+                </div>
+
+                <!-- Overview Cards -->
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-total-users">-</div>
+                        <div class="stat-label">Utenti Totali</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-total-posts">-</div>
+                        <div class="stat-label">Post Totali</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-total-spotted">-</div>
+                        <div class="stat-label">Spotted Totali</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-total-interactions">-</div>
+                        <div class="stat-label">Interazioni Totali</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-total-cities">-</div>
+                        <div class="stat-label">Città</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-total-schools">-</div>
+                        <div class="stat-label">Scuole</div>
+                    </div>
+                </div>
+
+                <!-- Tabs for different stats -->
+                <div class="stats-tabs">
+                    <button class="tab-btn active" data-stats-tab="rankings">Classifiche</button>
+                    <button class="tab-btn" data-stats-tab="cities-detail">Dettaglio Città</button>
+                    <button class="tab-btn" data-stats-tab="schools-detail">Dettaglio Scuole</button>
+                    <button class="tab-btn" data-stats-tab="temporal">Analisi Temporale</button>
+                </div>
+
+                <!-- Rankings Tab -->
+                <div id="rankings-tab" class="stats-tab-content">
+                    <div class="rankings-grid">
+                        <div class="ranking-section">
+                            <h3>Top 10 Città per Utenti</h3>
+                            <table class="ranking-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Città</th>
+                                        <th>Regione</th>
+                                        <th>Utenti</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="top-cities-table"></tbody>
+                            </table>
+                        </div>
+                        <div class="ranking-section">
+                            <h3>Top 10 Scuole per Utenti</h3>
+                            <table class="ranking-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Scuola</th>
+                                        <th>Città</th>
+                                        <th>Utenti</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="top-schools-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cities Detail Tab -->
+                <div id="cities-detail-tab" class="stats-tab-content hidden">
+                    <h3>Statistiche per Città</h3>
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Città</th>
+                                <th>Regione</th>
+                                <th>Utenti</th>
+                                <th>Scuole</th>
+                                <th>Post</th>
+                                <th>Spotted</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cities-stats-table"></tbody>
+                    </table>
+                </div>
+
+                <!-- Schools Detail Tab -->
+                <div id="schools-detail-tab" class="stats-tab-content hidden">
+                    <h3>Statistiche per Scuola</h3>
+                    <div class="filter-row">
+                        <select id="stats-city-filter" onchange="filterSchoolsStats()">
+                            <option value="">Tutte le città</option>
+                        </select>
+                    </div>
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Scuola</th>
+                                <th>Città</th>
+                                <th>Utenti</th>
+                                <th>Post</th>
+                                <th>Spotted</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schools-stats-table"></tbody>
+                    </table>
+                </div>
+
+                <!-- Temporal Tab -->
+                <div id="temporal-tab" class="stats-tab-content hidden">
+                    <h3>Andamento Temporale (ultimi 12 mesi)</h3>
+                    <div class="temporal-grid">
+                        <div class="temporal-section">
+                            <h4>Nuovi Utenti per Mese</h4>
+                            <table class="temporal-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mese</th>
+                                        <th>Nuovi Utenti</th>
+                                        <th>Grafico</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-time-table"></tbody>
+                            </table>
+                        </div>
+                        <div class="temporal-section">
+                            <h4>Post per Mese</h4>
+                            <table class="temporal-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mese</th>
+                                        <th>Post</th>
+                                        <th>Grafico</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="posts-time-table"></tbody>
+                            </table>
+                        </div>
+                        <div class="temporal-section">
+                            <h4>Spotted per Mese</h4>
+                            <table class="temporal-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mese</th>
+                                        <th>Spotted</th>
+                                        <th>Grafico</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="spotted-time-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Cities Section -->
-            <section id="cities-section" class="section">
+            <section id="cities-section" class="section hidden">
                 <div class="section-header">
                     <h2>Gestione Città</h2>
                     <button class="btn btn-primary" onclick="showAddCityModal()">+ Aggiungi Città</button>
@@ -203,6 +368,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
 </body>
 </html>

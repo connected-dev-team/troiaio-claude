@@ -153,6 +153,71 @@ type SetRoleRequest struct {
 	Role string `json:"role"`
 }
 
+// ==================== STATISTICS ====================
+
+type TotalStats struct {
+	TotalUsers         int `json:"total_users"`
+	TotalPosts         int `json:"total_posts"`
+	TotalSpotted       int `json:"total_spotted"`
+	ApprovedPosts      int `json:"approved_posts"`
+	ApprovedSpotted    int `json:"approved_spotted"`
+	TotalPostLikes     int `json:"total_post_likes"`
+	TotalSpottedLikes  int `json:"total_spotted_likes"`
+	TotalCities        int `json:"total_cities"`
+	TotalSchools       int `json:"total_schools"`
+	TotalInteractions  int `json:"total_interactions"`
+}
+
+type CityStats struct {
+	ID           int     `json:"id"`
+	Name         string  `json:"name"`
+	Region       *string `json:"region"`
+	UserCount    int     `json:"user_count"`
+	SchoolCount  int     `json:"school_count"`
+	PostCount    int     `json:"post_count"`
+	SpottedCount int     `json:"spotted_count"`
+}
+
+type SchoolStats struct {
+	ID           int    `json:"id"`
+	Name         string `json:"name"`
+	CityID       int    `json:"city_id"`
+	CityName     string `json:"city_name"`
+	UserCount    int    `json:"user_count"`
+	PostCount    int    `json:"post_count"`
+	SpottedCount int    `json:"spotted_count"`
+}
+
+type TimeStats struct {
+	Month string `json:"month"`
+	Count int    `json:"count"`
+}
+
+type TopCity struct {
+	ID        int     `json:"id"`
+	Name      string  `json:"name"`
+	Region    *string `json:"region"`
+	UserCount int     `json:"user_count"`
+}
+
+type TopSchool struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	CityName  string `json:"city_name"`
+	UserCount int    `json:"user_count"`
+}
+
+type FullStatistics struct {
+	Totals        TotalStats    `json:"totals"`
+	CitiesStats   []CityStats   `json:"cities_stats"`
+	SchoolsStats  []SchoolStats `json:"schools_stats"`
+	UsersOverTime []TimeStats   `json:"users_over_time"`
+	PostsOverTime []TimeStats   `json:"posts_over_time"`
+	SpottedOverTime []TimeStats `json:"spotted_over_time"`
+	TopCities     []TopCity     `json:"top_cities"`
+	TopSchools    []TopSchool   `json:"top_schools"`
+}
+
 // ==================== GENERIC RESPONSES ====================
 
 type SuccessResponse struct {

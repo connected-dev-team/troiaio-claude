@@ -348,3 +348,146 @@ func GetUserById(db *pgx.Conn, userId int) (pgx.Rows, error) {
 		userId,
 	)
 }
+
+// ==================== STATISTICS ====================
+
+// Totali generali
+func QueryTotalStats(db *pgx.Conn) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT
+			(SELECT COUNT(*) FROM users) as total_users,
+			(SELECT COUNT(*) FROM post) as total_posts,
+			(SELECT COUNT(*) FROM spotted) as total_spotted,
+			(SELECT COUNT(*) FROM post WHERE status = (SELECT id FROM submit_status WHERE description='approved')) as approved_posts,
+			(SELECT COUNT(*) FROM spotted WHERE status = (SELECT id FROM submit_status WHERE description='approved')) as approved_spotted,
+			(SELECT COUNT(*) FROM post_like) as total_post_likes,
+			(SELECT COUNT(*) FROM spotted_like) as total_spotted_likes,
+			(SELECT COUNT(*) FROM cities) as total_cities,
+			(SELECT COUNT(*) FROM schools) as total_schools`,
+	)
+}
+
+// Statistiche per città
+func QueryStatsByCity(db *pgx.Conn) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT
+			c.id, c.name, c.region,
+			COUNT(DISTINCT utsc.user_id) as user_count,
+			(SELECT COUNT(*) FROM schools WHERE city = c.id) as school_count,
+			COALESCE((SELECT COUNT(*) FROM post p
+				JOIN users u ON p.creator = u.id
+				JOIN users_to_school_cities utsc2 ON u.id = utsc2.user_id
+				WHERE utsc2.city = c.id), 0) as post_count,
+			COALESCE((SELECT COUNT(*) FROM spotted s
+				JOIN users u ON s.creator = u.id
+				JOIN users_to_school_cities utsc2 ON u.id = utsc2.user_id
+				WHERE utsc2.city = c.id), 0) as spotted_count
+		 FROM cities c
+		 LEFT JOIN users_to_school_cities utsc ON utsc.city = c.id
+		 GROUP BY c.id, c.name, c.region
+		 ORDER BY user_count DESC`,
+	)
+}
+
+// Statistiche per scuola
+func QueryStatsBySchool(db *pgx.Conn) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT
+			s.id, s.name, c.id as city_id, c.name as city_name,
+			COUNT(DISTINCT utsc.user_id) as user_count,
+			COALESCE((SELECT COUNT(*) FROM post p
+				JOIN users u ON p.creator = u.id
+				JOIN users_to_school_cities utsc2 ON u.id = utsc2.user_id
+				WHERE utsc2.school = s.id), 0) as post_count,
+			COALESCE((SELECT COUNT(*) FROM spotted sp
+				JOIN users u ON sp.creator = u.id
+				JOIN users_to_school_cities utsc2 ON u.id = utsc2.user_id
+				WHERE utsc2.school = s.id), 0) as spotted_count
+		 FROM schools s
+		 JOIN cities c ON s.city = c.id
+		 LEFT JOIN users_to_school_cities utsc ON utsc.school = s.id
+		 GROUP BY s.id, s.name, c.id, c.name
+		 ORDER BY user_count DESC`,
+	)
+}
+
+// Statistiche temporali - utenti per mese
+func QueryUsersOverTime(db *pgx.Conn) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT
+			DATE_TRUNC('month', creation_timestamp) as month,
+			COUNT(*) as count
+		 FROM users
+		 WHERE creation_timestamp IS NOT NULL
+		 GROUP BY DATE_TRUNC('month', creation_timestamp)
+		 ORDER BY month DESC
+		 LIMIT 12`,
+	)
+}
+
+// Statistiche temporali - post per mese
+func QueryPostsOverTime(db *pgx.Conn) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT
+			DATE_TRUNC('month', creation_timestamp) as month,
+			COUNT(*) as count
+		 FROM post
+		 WHERE creation_timestamp IS NOT NULL
+		 GROUP BY DATE_TRUNC('month', creation_timestamp)
+		 ORDER BY month DESC
+		 LIMIT 12`,
+	)
+}
+
+// Statistiche temporali - spotted per mese
+func QuerySpottedOverTime(db *pgx.Conn) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT
+			DATE_TRUNC('month', creation_timestamp) as month,
+			COUNT(*) as count
+		 FROM spotted
+		 WHERE creation_timestamp IS NOT NULL
+		 GROUP BY DATE_TRUNC('month', creation_timestamp)
+		 ORDER BY month DESC
+		 LIMIT 12`,
+	)
+}
+
+// Top 10 città per utenti
+func QueryTopCities(db *pgx.Conn, limit int) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT
+			c.id, c.name, c.region,
+			COUNT(DISTINCT utsc.user_id) as user_count
+		 FROM cities c
+		 LEFT JOIN users_to_school_cities utsc ON utsc.city = c.id
+		 GROUP BY c.id, c.name, c.region
+		 ORDER BY user_count DESC
+		 LIMIT $1`,
+		limit,
+	)
+}
+
+// Top 10 scuole per utenti
+func QueryTopSchools(db *pgx.Conn, limit int) (pgx.Rows, error) {
+	return db.Query(
+		context.Background(),
+		`SELECT
+			s.id, s.name, c.name as city_name,
+			COUNT(DISTINCT utsc.user_id) as user_count
+		 FROM schools s
+		 JOIN cities c ON s.city = c.id
+		 LEFT JOIN users_to_school_cities utsc ON utsc.school = s.id
+		 GROUP BY s.id, s.name, c.name
+		 ORDER BY user_count DESC
+		 LIMIT $1`,
+		limit,
+	)
+}

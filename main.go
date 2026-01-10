@@ -70,6 +70,9 @@ func main() {
 		fullAccess.Use(authMiddleware())
 		fullAccess.Use(requireFullAccess())
 		{
+			// Statistics
+			fullAccess.GET("/statistics", handleGetStatistics)
+
 			// Cities CRUD
 			fullAccess.GET("/cities", handleGetCities)
 			fullAccess.POST("/cities", handleAddCity)
